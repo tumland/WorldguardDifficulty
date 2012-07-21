@@ -1,0 +1,36 @@
+name: WorldguardDifficulty
+main: com.coffeejawa.WorldguardDifficulty.WorldguardDifficulty
+version: 0.5
+authors: [tumland]
+description: Worldguard Difficult allows monster difficulty adjustment in Worldguard regions.
+
+softdepend: [ WorldGuard ]
+
+commands:
+    WGD:
+        description: Root command for all  WorldguardDifficulty Commands.
+        aliases: wgd
+        usage: /wgd [add|set|list|debug]
+        permission: wgd.help
+        permission-message: You require permission wgd.help to do that.
+        
+permissions:
+    wgd.*:
+        description: Gives access to all WorldguardDifficulty commands/functions.
+        default: op
+        children:
+            wgd.add: true
+            wgd.debug: true
+            wgd.help: true
+
+    wgd.add:
+        description: Allows user to add region mappings.
+        default: false
+    
+    wgd.debug:
+        description: Allows user to toggle debug on and off.
+        default: false
+
+    wgd.help:
+        description: Allows user to view command help text.
+        default: false
