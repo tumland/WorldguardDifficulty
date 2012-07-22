@@ -1,7 +1,9 @@
 package com.coffeejawa.WorldguardDifficulty;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -24,7 +26,6 @@ public class WgdDamageListener implements Listener
 	private double worldMobDamageMult;
 	private final WorldguardDifficulty _plugin;
 	
-    private Map<String,ProtectedRegion> AllProtectedRegions;
 		
 	public WgdDamageListener(WorldguardDifficulty plugin) {
 		super();
@@ -154,10 +155,10 @@ public class WgdDamageListener implements Listener
 
 	private ArrayList<String> locationInRegionsNamed(Location location)
 	{
-		updateRegions();
+		Map<String,ProtectedRegion> regionMap = getRegions(location.getWorld());
 		ArrayList<String> regionNames = new ArrayList<String>();
 		
-        for(ProtectedRegion pr : this.AllProtectedRegions.values()) {
+        for(ProtectedRegion pr : regionMap.values()) {
             int depth = 1;
             ProtectedRegion p = pr;
             while(p.getParent() != null) {
@@ -203,28 +204,19 @@ public class WgdDamageListener implements Listener
 		return false;
     }
     
-    private void updateRegions() {
+    private TreeMap<String,ProtectedRegion> getRegions(World world) {
     	WorldGuardPlugin wg = (WorldGuardPlugin) _plugin.getServer().getPluginManager()
 				.getPlugin("WorldGuard");
         if(wg == null) {
-            return;
+            return new TreeMap<String,ProtectedRegion>();
         }
     	
-        Map<String,ProtectedRegion> wRegions;
-        for(World w : _plugin.getServer().getWorlds()) {
-            RegionManager rm = wg.getRegionManager(w); 
-            if(rm == null) continue;
-            
-            wRegions = rm.getRegions();
-            if(wRegions != null && wRegions.size() > 0){
-            	if(this.AllProtectedRegions == null) {
-            		this.AllProtectedRegions = wRegions;
-            	}
-            	else {
-            		this.AllProtectedRegions.putAll(wRegions);  
-            	}
-            }
-        }
+        TreeMap<String,ProtectedRegion> wRegions = new TreeMap<String,ProtectedRegion>();
+        RegionManager rm = wg.getRegionManager(world); 
+        if(rm == null) return wRegions;
+        
+        wRegions = (TreeMap<String, ProtectedRegion>) rm.getRegions();
+		return wRegions;
     }
 }
 

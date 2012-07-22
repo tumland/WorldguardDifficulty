@@ -7,17 +7,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
+import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 
 public class WorldguardDifficulty extends JavaPlugin {
 
@@ -109,9 +112,13 @@ public class WorldguardDifficulty extends JavaPlugin {
 			// check the first arg and call any appropriate nested parsers
 			if(args.length == 0){
 				sender.sendMessage("WorldguardDifficulty Command Interface");
-				sender.sendMessage("Usage: /wgd [add|set|list|debug]");
+				sender.sendMessage("Usage: /wgd [add|set|list|reset|remove|debug]");
 			}
 			if (args.length > 0){
+				HashMap<String,Object> defaultRegionOptions = new HashMap<String,Object>();
+				defaultRegionOptions.put("mobDamageMult", 1.0);
+				defaultRegionOptions.put("mobHealthMult", 1.0);
+				
 				String arg = args[0];
 				if (arg.equalsIgnoreCase("add") )
 				{
@@ -127,40 +134,19 @@ public class WorldguardDifficulty extends JavaPlugin {
 						return false;
 					}
 					
-					// add new region define
-					String sectionName = "regions."+args[1];
-					// set up defaults
-					HashMap<String,Object> defaultRegionOptions = new HashMap<String,Object>();
-					defaultRegionOptions.put("mobDamageMult", 1.0);
-					defaultRegionOptions.put("mobHealthMult", 1.0);
-					this.regionConfig.createSection(sectionName, defaultRegionOptions);
-					this.saveRegionConfig();
-					this.reloadRegionConfig();
-					sender.sendMessage("Region "+args[1]+" added");
-				}
-				if (arg.equalsIgnoreCase("remove") )
-				{
-					if(args.length != 2){
-						sender.sendMessage("Usage: /wgd remove <regionID>");
-						sender.sendMessage("Description: removes mappings from regions config");
-						return false;
-					}
-					
-					if(!sender.hasPermission("wgd.remove")){
-						sender.sendMessage("Add failed: requires permission" + "wgd.remove");
-						return false;
-					}
-					
-					// add new region define
-					String sectionName = "regions."+args[1];
-					// set up defaults
-					HashMap<String,Object> defaultRegionOptions = new HashMap<String,Object>();
-					defaultRegionOptions.put("mobDamageMult", 1.0);
-					defaultRegionOptions.put("mobHealthMult", 1.0);
-					this.regionConfig.createSection(sectionName, defaultRegionOptions);
-					this.saveRegionConfig();
-					this.reloadRegionConfig();
-					sender.sendMessage("Region "+args[1]+" added");
+                    // add new region define
+                    String sectionName = "regions."+args[1];
+                    // set up defaults
+                    if(!getRegionConfig().isConfigurationSection(sectionName)){
+                        getRegionConfig().createSection(sectionName, defaultRegionOptions);
+                        saveRegionConfig();
+                        reloadRegionConfig();
+                        sender.sendMessage("Region "+args[1]+" added");
+                    }
+                    else{
+                        sender.sendMessage("Error: region already exists in config.");
+                        return false;
+                    }
 				}
 				else if (arg.equalsIgnoreCase("set")){
 					if(args.length != 4){
@@ -179,16 +165,15 @@ public class WorldguardDifficulty extends JavaPlugin {
 					sender.sendMessage("Warning: only double types currently allowed for property values.");
 					
 					// Is the property Name in list of known args?
-					ArrayList<String> propertyList = new ArrayList<String>();
-					propertyList.add("mobHealthMult");
-					propertyList.add("mobDamageMult");
-					
-					if(!propertyList.contains(propName)){
+					if(!defaultRegionOptions.containsKey(propName)){
 						sender.sendMessage("Unrecognized property.");
 						return false;
 					}
 					
-					this.getRegionConfig().set(sectionName+"."+propName, Double.parseDouble(value));
+					if(!getRegionConfig().isConfigurationSection(sectionName)){
+						getRegionConfig().createSection(sectionName, defaultRegionOptions);
+					}
+					getRegionConfig().set(sectionName+"."+propName, Double.parseDouble(value));
 					sender.sendMessage("Set "+args[1]+"'s property "+propName+" to "+value);
 					
 					this.saveRegionConfig();
@@ -196,6 +181,7 @@ public class WorldguardDifficulty extends JavaPlugin {
 				else if (arg.equalsIgnoreCase("list")){
 					if(args.length != 2){
 						sender.sendMessage("Usage: /wgd list <regionID>");
+						sender.sendMessage("OR /wgd list Sections");
 						sender.sendMessage("Description: Lists all properties and values for a given region");
 						return false;
 					}
@@ -203,20 +189,71 @@ public class WorldguardDifficulty extends JavaPlugin {
 						sender.sendMessage("Add failed: requires permission" + "wgd.add");
 						return false;
 					}
-					sender.sendMessage("List of properties for region "+args[1]+":");
-					Map<String, Object> values = this.getRegionConfig().getConfigurationSection("regions."+args[1]).getValues(false);
-					
-					if(values.size() == 0){
-						sender.sendMessage("Region not found");
-						return true;
+					if(args[1].equalsIgnoreCase("regions")){
+					    
+					    ConfigurationSection regionsSection = getRegionConfig().getConfigurationSection("regions");
+					    if(regionsSection == null){
+					        sender.sendMessage("Error: Regions section missing from regions.yml");
+					        return false;
+					    }
+					    
+					    Set<String> sections = regionsSection.getKeys(false);
+					    String msgString = "Configured regions: ";
+					    for(String sectionName : sections) {
+					        msgString += ", "+sectionName;
+					    }
+					    sender.sendMessage(msgString);
+					    return true;
 					}
+										
+					sender.sendMessage("List of properties for region "+args[1]+":");
+					String sectionName = "regions."+args[1];
+					ConfigurationSection section = this.getRegionConfig().getConfigurationSection(sectionName);
 					
+					//If region hasn't been added, add it now.
+					if(section == null){
+					    section = this.regionConfig.createSection(sectionName, defaultRegionOptions);
+	                    saveRegionConfig();
+	                    reloadRegionConfig();
+					}
+					Map<String,Object> values = section.getValues(false);
 					Iterator<Map.Entry<String, Object>> it = values.entrySet().iterator();
+					
+					sender.sendMessage("Region "+args[1]+" properties: ");
 					while (it.hasNext()){
 						Map.Entry<String, Object> pairs = it.next();
-						sender.sendMessage("Region "+args[1]+" properties: "+pairs.getKey()+" : "+pairs.getValue().toString());
+						sender.sendMessage(pairs.getKey()+" : "+pairs.getValue().toString());
 						it.remove();
 					}
+				}
+				else if(arg.equalsIgnoreCase("remove")){
+					if(args.length != 2){
+						sender.sendMessage("Usage: /wgd remove <regionID>");
+						sender.sendMessage("Description: Removes region from database.");
+						return false;
+					}
+					if(!sender.hasPermission("wgd.remove")){
+						sender.sendMessage("Remove failed: requires permission" + "wgd.remove");
+						return false;
+					}
+					String sectionName = "regions."+args[1];
+					getRegionConfig().set(sectionName, null);
+                    saveRegionConfig();
+                    reloadRegionConfig();
+				}
+				else if(arg.equalsIgnoreCase("reset")){
+					if(args.length != 2){
+						sender.sendMessage("Usage: /wgd reset <regionID>");
+						sender.sendMessage("Description: Resets region to default values.");
+						return false;
+					}
+					if(!sender.hasPermission("wgd.reset")){
+						sender.sendMessage("Reset failed: requires permission" + "wgd.reset");
+						return false;
+					}
+					String sectionName = "regions."+args[1];
+					this.regionConfig.createSection(sectionName, defaultRegionOptions);
+					sender.sendMessage("Region "+args[1]+" configuration reset to default options");
 				}
 				else if(arg.equalsIgnoreCase("debug")){
 					if(args.length != 2){

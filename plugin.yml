@@ -10,7 +10,7 @@ commands:
     WGD:
         description: Root command for all  WorldguardDifficulty Commands.
         aliases: wgd
-        usage: /wgd [add|set|list|debug]
+        usage: /wgd [add|set|list|reset|remove|debug]
         permission: wgd.help
         permission-message: You require permission wgd.help to do that.
         
@@ -22,10 +22,20 @@ permissions:
             wgd.add: true
             wgd.debug: true
             wgd.help: true
+            wgd.remove: true
+            wgd.reset: true
 
     wgd.add:
         description: Allows user to add region mappings.
         default: false
+        
+    wgd.remove:
+        description: Allow user to remove mapping for a region ID.
+        default: false
+        
+    wgd.reset:
+           description: Allow user to reset region to default settings.
+           default: false
     
     wgd.debug:
         description: Allows user to toggle debug on and off.

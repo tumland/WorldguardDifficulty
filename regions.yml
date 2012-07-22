@@ -2,4 +2,3 @@ regions:
     spawn:
         mobDamageMult: 5.0
         mobHealthMult: 0.5
-        spawnRate: 100
