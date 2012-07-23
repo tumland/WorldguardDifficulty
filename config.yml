@@ -1,4 +1,4 @@
 useWorldGuard: true
-mobDamageMult: 5.0
-mobHealthMult: 0.5
+mobDamageMult: 1.0
+mobHealthMult: 1.0
 debug: false

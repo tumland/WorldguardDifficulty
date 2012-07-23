@@ -3,7 +3,6 @@ package com.coffeejawa.WorldguardDifficulty;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -20,7 +19,6 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
-import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 
 public class WorldguardDifficulty extends JavaPlugin {
 
@@ -45,7 +43,7 @@ public class WorldguardDifficulty extends JavaPlugin {
 		reloadRegionConfig();
 		
 		this.logger.info(pdfFile.getName() + " v" + pdfFile.getVersion() + " Has Been Enabled!");
-        getServer().getPluginManager().registerEvents(new WgdDamageListener(this), this);
+        getServer().getPluginManager().registerEvents(new WgdEntityListener(this), this);
 
     }
 	public void getConfiguration()
@@ -181,7 +179,7 @@ public class WorldguardDifficulty extends JavaPlugin {
 				else if (arg.equalsIgnoreCase("list")){
 					if(args.length != 2){
 						sender.sendMessage("Usage: /wgd list <regionID>");
-						sender.sendMessage("OR /wgd list Sections");
+						sender.sendMessage("OR /wgd list Regions");
 						sender.sendMessage("Description: Lists all properties and values for a given region");
 						return false;
 					}
