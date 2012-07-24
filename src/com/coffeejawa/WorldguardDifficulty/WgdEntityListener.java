@@ -3,21 +3,25 @@ package com.coffeejawa.WorldguardDifficulty;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeMap;
 
+import net.minecraft.server.EntityCreature;
+import net.minecraft.server.Navigation;
+
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.World;
+import org.bukkit.craftbukkit.entity.CraftCreature;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Zombie;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 
 import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
@@ -170,16 +174,61 @@ public class WgdEntityListener implements Listener
         }
         return maxMobDamageMult; 
 	}
+    public double getMaxZombieSpeed(Entity entity){
+        double worldZombieSpeed = _plugin.getConfig().getDouble("zombieSpeed");
+        
+        if (_plugin.worldguard == null || !_plugin.bWorldGuardEnabled){
+            return worldZombieSpeed;
+        }
+
+        ArrayList<String> regionNames = entityRegistry.getRegions(entity);
+
+        double maxZombieSpeed = worldZombieSpeed;
+        // Look in our config for regions
+        for(String regionName : regionNames) {
+            if(_plugin.getRegionConfig() != null) {
+                if(_plugin.getRegionConfig().getDouble("regions."+regionName+".zombieSpeed") != 0){
+                    double regionZombieSpeed = _plugin.getRegionConfig().getDouble("regions."+regionName+".zombieSpeed");
+
+                    if(regionZombieSpeed > maxZombieSpeed){
+                        maxZombieSpeed = regionZombieSpeed;
+                    }
+                }
+            }                    
+        }
+        return maxZombieSpeed; 
+    }
+    private double getMinZombieActivationRange(Entity entity) {
+        // TODO Auto-generated method stub
+        double worldZombieActivationRange = _plugin.getConfig().getDouble("zombieActivationRange");
+        
+        if (_plugin.worldguard == null || !_plugin.bWorldGuardEnabled){
+            return worldZombieActivationRange;
+        }
+        
+        ArrayList<String> regionNames = entityRegistry.getRegions(entity);
+
+        double minZombieActivationRange = worldZombieActivationRange;
+        // Look in our config for regions
+        for(String regionName : regionNames) {
+            if(_plugin.getRegionConfig() != null) {
+                if(_plugin.getRegionConfig().getDouble("regions."+regionName+".zombieActivationRange") != 0){
+                    double regionZombieActivationRange = _plugin.getRegionConfig().getDouble("regions."+regionName+".zombieActivationRange");
+
+                    if(regionZombieActivationRange < minZombieActivationRange){
+                        minZombieActivationRange = regionZombieActivationRange;
+                    }
+                }
+            }                    
+        }
+        return minZombieActivationRange; 
+    }
 
 	private ArrayList<String> locationInRegionsNamed(Location location)
 	{
 	    
 		Map<String,ProtectedRegion> regionMap = getRegions(location);
 		ArrayList<String> regionNames = new ArrayList<String>();
-		
-        if(_plugin.getConfig().getBoolean("debug")){
-            _plugin.logger.info(String.format("Region names: %s",regionNames.toString()));
-        }
 		
         for(ProtectedRegion pr : regionMap.values()) {
             int depth = 1;
@@ -256,9 +305,6 @@ public class WgdEntityListener implements Listener
         ArrayList<String> regionNames = locationInRegionsNamed(loc);
 
         if(regionNames.size() == 0){
-            if(_plugin.getConfig().getBoolean("debug")){
-                _plugin.logger.info(String.format("Region names is empty"));
-            }
             return;
         }
         
@@ -277,17 +323,61 @@ public class WgdEntityListener implements Listener
         }
     }
     
+//    @EventHandler
+//    public void onChunkUnload(ChunkUnloadEvent event){
+//        Entity[] entities = event.getChunk().getEntities();
+//        
+//        for( Entity entity : entities ){
+//            entityRegistry.remove(entity);
+//            if(_plugin.getConfig().getBoolean("debug")){
+//                _plugin.logger.info(String.format("Removed from entity registry: %s",entity.getType().toString()));
+//            }
+//        }
+//    }
+//    
+//    @EventHandler
+//    public void onChunkLoad(ChunkLoadEvent event){
+//        Entity[] entities = event.getChunk().getEntities();
+//        
+//        for( Entity entity : entities ){
+//            Location loc = entity.getLocation();
+//            ArrayList<String> regionNames = locationInRegionsNamed(loc);
+//
+//            if(regionNames.size() == 0){
+//                return;
+//            }
+//            
+//            // add to entity registry
+//            entityRegistry.add(entity, regionNames);
+//            if(_plugin.getConfig().getBoolean("debug")){
+//                _plugin.logger.info(String.format("Added to entity registry: %s",entity.getType().toString()));
+//            }
+//        }
+//    }
+    
     @EventHandler
-    public void onChunkUnload(ChunkUnloadEvent event){
-        Entity[] entities = event.getChunk().getEntities();
+    public void onZombieMove(ZombieMoveEvent event) {
+        Zombie zombie = event.getZombie();
+        double zombieSpeed = this.getMaxZombieSpeed(event.getEntity());
+        double zombieActivationRange = this.getMinZombieActivationRange(event.getEntity());
+      
         
-        for( Entity entity : entities ){
-            entityRegistry.remove(entity);
-            if(_plugin.getConfig().getBoolean("debug")){
-                _plugin.logger.info(String.format("Removed from entity registry: %s",entity.getType().toString()));
+        for (Player player : Bukkit.getOnlinePlayers()){
+            if(player.getLocation().distance(zombie.getLocation()) < zombieActivationRange){
+                // set zombie speed
+                EntityCreature ec = ((CraftCreature)zombie).getHandle();
+                Navigation nav = ec.al();
+                  nav.a((float)zombieSpeed);
+                  
+                  if(_plugin.getConfig().getBoolean("debug")){
+                      _plugin.logger.info(String.format("Zombie lunge activated!"));
+                  }
+                break;
             }
         }
     }
+
+
 }
 
 

@@ -1,4 +1,6 @@
 useWorldGuard: true
 mobDamageMult: 1.0
 mobHealthMult: 1.0
+zombieSpeed: 0.1
+zombieActivationRange: 5.0
 debug: false

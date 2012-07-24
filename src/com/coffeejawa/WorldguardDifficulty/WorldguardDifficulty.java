@@ -3,6 +3,7 @@ package com.coffeejawa.WorldguardDifficulty;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.lang.StringUtils;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
@@ -44,6 +46,23 @@ public class WorldguardDifficulty extends JavaPlugin {
 		
 		this.logger.info(pdfFile.getName() + " v" + pdfFile.getVersion() + " Has Been Enabled!");
         getServer().getPluginManager().registerEvents(new WgdEntityListener(this), this);
+        getServer().getPluginManager().registerEvents(new WgdZombieListener(this), this);
+        
+        try{
+            @SuppressWarnings("rawtypes")
+            Class[] args = new Class[3];
+            args[0] = Class.class;
+            args[1] = String.class;
+            args[2] = int.class;
+ 
+            Method a = net.minecraft.server.EntityTypes.class.getDeclaredMethod("a", args);
+            a.setAccessible(true);
+ 
+            a.invoke(a, WgdZombie.class, "Zombie", 54);
+        }catch (Exception e){
+            e.printStackTrace();
+            this.setEnabled(false);
+        }
 
     }
 	public void getConfiguration()
@@ -116,6 +135,8 @@ public class WorldguardDifficulty extends JavaPlugin {
 				HashMap<String,Object> defaultRegionOptions = new HashMap<String,Object>();
 				defaultRegionOptions.put("mobDamageMult", 1.0);
 				defaultRegionOptions.put("mobHealthMult", 1.0);
+				defaultRegionOptions.put("zombieSpeed", 0.1);
+				defaultRegionOptions.put("zombieActivationRange", 20.0);
 				
 				String arg = args[0];
 				if (arg.equalsIgnoreCase("add") )
@@ -175,6 +196,7 @@ public class WorldguardDifficulty extends JavaPlugin {
 					sender.sendMessage("Set "+args[1]+"'s property "+propName+" to "+value);
 					
 					this.saveRegionConfig();
+					return true;
 				}	
 				else if (arg.equalsIgnoreCase("list")){
 					if(args.length != 2){
@@ -197,9 +219,7 @@ public class WorldguardDifficulty extends JavaPlugin {
 					    
 					    Set<String> sections = regionsSection.getKeys(false);
 					    String msgString = "Configured regions: ";
-					    for(String sectionName : sections) {
-					        msgString += ", "+sectionName;
-					    }
+					    msgString += StringUtils.join(sections,", ");
 					    sender.sendMessage(msgString);
 					    return true;
 					}
@@ -223,6 +243,7 @@ public class WorldguardDifficulty extends JavaPlugin {
 						sender.sendMessage(pairs.getKey()+" : "+pairs.getValue().toString());
 						it.remove();
 					}
+					return true;
 				}
 				else if(arg.equalsIgnoreCase("remove")){
 					if(args.length != 2){
@@ -238,6 +259,7 @@ public class WorldguardDifficulty extends JavaPlugin {
 					getRegionConfig().set(sectionName, null);
                     saveRegionConfig();
                     reloadRegionConfig();
+                    return true;
 				}
 				else if(arg.equalsIgnoreCase("reset")){
 					if(args.length != 2){
@@ -252,6 +274,7 @@ public class WorldguardDifficulty extends JavaPlugin {
 					String sectionName = "regions."+args[1];
 					this.regionConfig.createSection(sectionName, defaultRegionOptions);
 					sender.sendMessage("Region "+args[1]+" configuration reset to default options");
+					return true;
 				}
 				else if(arg.equalsIgnoreCase("debug")){
 					if(args.length != 2){
@@ -273,9 +296,12 @@ public class WorldguardDifficulty extends JavaPlugin {
 						return false;
 					}
 				}
+				else{
+				    return false;
+				}
 			}
 	
 		}
-		return true;
+		return false;
 	}
 }
